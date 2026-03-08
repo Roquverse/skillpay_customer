@@ -1,12 +1,31 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:skillpay/models/notification_model.dart';
+import 'package:skillpay/services/notifications_service.dart';
 import 'package:skillpay/theme/app_theme.dart';
 
-class NotificationsScreen extends StatelessWidget {
-  // Toggle this boolean to see the empty state vs populated state
-  final bool _isEmpty = false;
-
+class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
+
+  @override
+  State<NotificationsScreen> createState() => _NotificationsScreenState();
+}
+
+class _NotificationsScreenState extends State<NotificationsScreen> {
+  final NotificationsService _service = NotificationsService();
+  late Future<List<NotificationModel>> _notificationsFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _notificationsFuture = _service.fetchNotifications();
+  }
+
+  void _refresh() {
+    setState(() {
+      _notificationsFuture = _service.fetchNotifications();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -25,8 +44,95 @@ class NotificationsScreen extends StatelessWidget {
             color: Colors.white,
           ),
         ),
+        actions: [
+          TextButton(
+            onPressed: () async {
+              await _service.markAllAsRead();
+              _refresh();
+            },
+            child: Text(
+              'Mark all read',
+              style: GoogleFonts.outfit(
+                fontSize: 13,
+                color: Colors.white70,
+              ),
+            ),
+          ),
+        ],
       ),
-      body: _isEmpty ? _buildEmptyState() : _buildPopulatedState(),
+      body: FutureBuilder<List<NotificationModel>>(
+        future: _notificationsFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(
+              child: CircularProgressIndicator(color: AppColors.primary),
+            );
+          }
+
+          if (snapshot.hasError) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.error_outline, color: AppColors.textMedium, size: 48),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Failed to load notifications',
+                    style: GoogleFonts.outfit(
+                      fontSize: 16,
+                      color: AppColors.textMedium,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextButton(
+                    onPressed: _refresh,
+                    child: Text(
+                      'Retry',
+                      style: GoogleFonts.outfit(
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textDark,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          final notifications = snapshot.data ?? [];
+
+          if (notifications.isEmpty) {
+            return _buildEmptyState();
+          }
+
+          return RefreshIndicator(
+            color: AppColors.primary,
+            onRefresh: () async => _refresh(),
+            child: ListView.separated(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+              itemCount: notifications.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 16),
+              itemBuilder: (context, index) {
+                final n = notifications[index];
+                return GestureDetector(
+                  onTap: () async {
+                    if (!n.isRead) {
+                      await _service.markAsRead(n.id);
+                      _refresh();
+                    }
+                  },
+                  child: _buildNotificationCard(
+                    icon: n.icon,
+                    message: n.message,
+                    timeText: n.formattedTime,
+                    hasRedDot: !n.isRead,
+                  ),
+                );
+              },
+            ),
+          );
+        },
+      ),
     );
   }
 
@@ -87,102 +193,9 @@ class NotificationsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildPopulatedState() {
-    return ListView(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-      children: [
-        _buildNotificationCard(
-          icon: Icons.attach_money_rounded,
-          richText: TextSpan(
-            text: 'Your account have been credited with ',
-            style: GoogleFonts.outfit(fontSize: 14, color: AppColors.textDark),
-            children: [
-              TextSpan(
-                text: '\$450',
-                style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
-              ),
-              const TextSpan(text: ' click to see details...'),
-            ],
-          ),
-          timeText: 'Today 10:49 AM',
-          hasRedDot: true,
-        ),
-        const SizedBox(height: 16),
-        _buildNotificationCard(
-          icon: Icons.work_outline_rounded,
-          richText: TextSpan(
-            text: 'New job proposal from ',
-            style: GoogleFonts.outfit(fontSize: 14, color: AppColors.textDark),
-            children: [
-              TextSpan(
-                text: 'Mathew Kent',
-                style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
-              ),
-              const TextSpan(text: ' click to see details...'),
-            ],
-          ),
-          timeText: 'Today 10:49 AM',
-          hasRedDot: true,
-        ),
-        const SizedBox(height: 16),
-        _buildNotificationCard(
-          icon: Icons.notifications_none_rounded,
-          richText: TextSpan(
-            text: 'New update on job ',
-            style: GoogleFonts.outfit(fontSize: 14, color: AppColors.textDark),
-            children: [
-              TextSpan(
-                text: '1738884049',
-                style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
-              ),
-              const TextSpan(text: '\nclick to see more details...'),
-            ],
-          ),
-          timeText: 'Today 10:49 AM',
-          hasRedDot: true,
-        ),
-        const SizedBox(height: 16),
-        // Duplicated items from mockup to show scrolling
-        _buildNotificationCard(
-          icon: Icons.attach_money_rounded,
-          richText: TextSpan(
-            text: 'Your account have been credited with ',
-            style: GoogleFonts.outfit(fontSize: 14, color: AppColors.textDark),
-            children: [
-              TextSpan(
-                text: '\$450',
-                style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
-              ),
-              const TextSpan(text: ' click to see details...'),
-            ],
-          ),
-          timeText: 'Today 10:49 AM',
-          hasRedDot: false,
-        ),
-        const SizedBox(height: 16),
-        _buildNotificationCard(
-          icon: Icons.work_outline_rounded,
-          richText: TextSpan(
-            text: 'New job proposal from ',
-            style: GoogleFonts.outfit(fontSize: 14, color: AppColors.textDark),
-            children: [
-              TextSpan(
-                text: 'Mathew Kent',
-                style: GoogleFonts.outfit(fontWeight: FontWeight.w700),
-              ),
-              const TextSpan(text: ' click to see details...'),
-            ],
-          ),
-          timeText: 'Today 10:49 AM',
-          hasRedDot: false,
-        ),
-      ],
-    );
-  }
-
   Widget _buildNotificationCard({
     required IconData icon,
-    required TextSpan richText,
+    required String message,
     required String timeText,
     required bool hasRedDot,
   }) {
@@ -245,8 +258,12 @@ class NotificationsScreen extends StatelessWidget {
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.only(top: 4),
-                    child: RichText(
-                      text: richText,
+                    child: Text(
+                      message,
+                      style: GoogleFonts.outfit(
+                        fontSize: 14,
+                        color: AppColors.textDark,
+                      ),
                     ),
                   ),
                 ),
@@ -267,7 +284,7 @@ class NotificationsScreen extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  'View',
+                  hasRedDot ? 'Mark as read' : 'View',
                   style: GoogleFonts.outfit(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
