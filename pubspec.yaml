@@ -1,0 +1,48 @@
+name: skillpay
+description: "Skillpay Customer - Find skilled workers and housekeepers near you."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  smooth_page_indicator: ^1.1.0
+  google_fonts: ^6.2.1
+  supabase_flutter: ^2.12.0
+  flutter_dotenv: ^6.0.0
+  uuid: ^4.5.3
+  image_picker: ^1.2.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+  flutter_launcher_icons: ^0.14.1
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/images/logo.png"
+  min_sdk_android: 21
+  remove_alpha_ios: true
+  web:
+    generate: false
+  windows:
+    generate: false
+  macos:
+    generate: false
+
+flutter:
+  uses-material-design: true
+  assets:
+    - .env
+    - assets/images/logo.png
+    - assets/images/onboarding_workers.png
+    - assets/images/onboarding_payment.png
+    - assets/images/cat_cleaning.png
+    - assets/images/cat_plumbing.png
+    - assets/images/cat_electrical.png
+    - assets/images/avatar_james.png
