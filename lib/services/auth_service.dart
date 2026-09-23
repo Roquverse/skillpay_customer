@@ -1,4 +1,6 @@
 import 'dart:io';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AuthService {
@@ -184,6 +186,63 @@ class AuthService {
   /// 5. Sign out the current user
   Future<void> signOut() async {
     try {
+      await _supabase.auth.signOut();
+    } catch (e) {
+      throw Exception(_formatError(e));
+    }
+  }
+
+  /// Deactivate account (sets account to INACTIVE on backend & Supabase, then signs out)
+  Future<void> deactivateAccount() async {
+    try {
+      final user = _supabase.auth.currentUser;
+      if (user == null) {
+        throw Exception('User is not authenticated.');
+      }
+
+      final session = _supabase.auth.currentSession;
+      final token = session?.accessToken;
+
+      // 1. Call backend deactivation endpoint if token is present
+      final apiUrl = dotenv.env['API_URL'];
+      if (apiUrl != null && apiUrl.isNotEmpty && token != null) {
+        try {
+          final cleanUrl =
+              apiUrl.endsWith('/') ? apiUrl.substring(0, apiUrl.length - 1) : apiUrl;
+          await http.post(
+            Uri.parse('$cleanUrl/auth/deactivate'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
+          );
+        } catch (_) {
+          // Proceed to sign out even if network fails
+        }
+      }
+
+      // 2. Mark metadata in Supabase
+      try {
+        await _supabase.auth.updateUser(
+          UserAttributes(
+            data: {
+              'is_deactivated': true,
+              'deactivated_at': DateTime.now().toIso8601String(),
+            },
+          ),
+        );
+      } catch (_) {}
+
+      // 3. Update public.user_profiles if present
+      try {
+        await _supabase.from('user_profiles').update({
+          'is_active': false,
+          'updated_at': DateTime.now().toIso8601String(),
+        }).eq('id', user.id);
+      } catch (_) {}
+
+      // 4. Sign out
       await _supabase.auth.signOut();
     } catch (e) {
       throw Exception(_formatError(e));
