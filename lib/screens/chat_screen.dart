@@ -175,9 +175,10 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final hasAvatar =
-        widget.artisanAvatarUrl != null && widget.artisanAvatarUrl!.isNotEmpty;
-    final isNetworkAvatar = hasAvatar && widget.artisanAvatarUrl!.startsWith('http');
+    final avatarUrl = widget.artisanAvatarUrl ?? '';
+    final isNetworkAvatar =
+        avatarUrl.startsWith('http://') || avatarUrl.startsWith('https://');
+    final isAssetAvatar = avatarUrl.startsWith('assets/');
 
     return Scaffold(
       backgroundColor: const Color(0xFFF9F9F9),
@@ -194,33 +195,25 @@ class _ChatScreenState extends State<ChatScreen> {
             Container(
               width: 36,
               height: 36,
+              clipBehavior: Clip.antiAlias,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: Colors.white.withValues(alpha: 0.2),
-                image: hasAvatar
-                    ? DecorationImage(
-                        image: isNetworkAvatar
-                            ? NetworkImage(widget.artisanAvatarUrl!)
-                                as ImageProvider
-                            : AssetImage(widget.artisanAvatarUrl!),
-                        fit: BoxFit.cover,
-                      )
-                    : null,
               ),
-              child: !hasAvatar
-                  ? Center(
-                      child: Text(
-                        widget.artisanName.isNotEmpty
-                            ? widget.artisanName[0].toUpperCase()
-                            : 'A',
-                        style: GoogleFonts.outfit(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.primary,
-                        ),
-                      ),
+              child: isNetworkAvatar
+                  ? Image.network(
+                      avatarUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => _buildAvatarPlaceholder(),
                     )
-                  : null,
+                  : (isAssetAvatar
+                      ? Image.asset(
+                          avatarUrl,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) =>
+                              _buildAvatarPlaceholder(),
+                        )
+                      : _buildAvatarPlaceholder()),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -472,6 +465,21 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildAvatarPlaceholder() {
+    return Center(
+      child: Text(
+        widget.artisanName.isNotEmpty
+            ? widget.artisanName[0].toUpperCase()
+            : 'A',
+        style: GoogleFonts.outfit(
+          fontSize: 16,
+          fontWeight: FontWeight.w600,
+          color: AppColors.primary,
+        ),
       ),
     );
   }

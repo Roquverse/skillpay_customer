@@ -332,20 +332,22 @@ class _ArtisansScreenState extends State<ArtisansScreen> {
                   ],
                 ),
               ),
-              ElevatedButton(
-                onPressed: () => _navigateToHire(artisan),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.black,
-                  elevation: 0,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  shape: RoundedRectangleBorder(
+              GestureDetector(
+                onTap: () => _navigateToHire(artisan),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary,
                     borderRadius: BorderRadius.circular(10),
                   ),
-                ),
-                child: Text(
-                  'Hire',
-                  style: GoogleFonts.outfit(fontSize: 12, fontWeight: FontWeight.w700),
+                  child: Text(
+                    'Hire',
+                    style: GoogleFonts.outfit(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
                 ),
               ),
             ],

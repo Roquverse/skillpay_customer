@@ -208,8 +208,6 @@ class _MessagesScreenState extends State<MessagesScreen> {
   }
 
   Widget _buildChatItem(ChatModel chat) {
-    final hasNetworkAvatar = chat.artisanAvatarUrl.startsWith('http');
-
     return InkWell(
       onTap: () {
         Navigator.push(
@@ -233,37 +231,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
         child: Row(
           children: [
             // Avatar
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: const Color(0xFFF5F5F5),
-                image: chat.artisanAvatarUrl.isNotEmpty
-                    ? DecorationImage(
-                        image: hasNetworkAvatar
-                            ? NetworkImage(chat.artisanAvatarUrl)
-                                as ImageProvider
-                            : AssetImage(chat.artisanAvatarUrl),
-                        fit: BoxFit.cover,
-                      )
-                    : null,
-              ),
-              child: chat.artisanAvatarUrl.isEmpty
-                  ? Center(
-                      child: Text(
-                        chat.artisanName.isNotEmpty
-                            ? chat.artisanName[0].toUpperCase()
-                            : 'A',
-                        style: GoogleFonts.outfit(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                    )
-                  : null,
-            ),
+            _buildAvatar(chat.artisanAvatarUrl, chat.artisanName, 48),
             const SizedBox(width: 16),
 
             // Name and Last Message
@@ -334,6 +302,47 @@ class _MessagesScreenState extends State<MessagesScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildAvatar(String url, String name, double size) {
+    final hasUrl = url.isNotEmpty;
+    final isNetwork =
+        hasUrl && (url.startsWith('http://') || url.startsWith('https://'));
+    final isAsset = hasUrl && url.startsWith('assets/');
+
+    final placeholder = Center(
+      child: Text(
+        name.isNotEmpty ? name[0].toUpperCase() : 'A',
+        style: GoogleFonts.outfit(
+          fontSize: size * 0.4,
+          fontWeight: FontWeight.w600,
+          color: AppColors.primary,
+        ),
+      ),
+    );
+
+    return Container(
+      width: size,
+      height: size,
+      clipBehavior: Clip.antiAlias,
+      decoration: const BoxDecoration(
+        shape: BoxShape.circle,
+        color: Color(0xFFF5F5F5),
+      ),
+      child: isNetwork
+          ? Image.network(
+              url,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => placeholder,
+            )
+          : (isAsset
+              ? Image.asset(
+                  url,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => placeholder,
+                )
+              : placeholder),
     );
   }
 }
