@@ -4,6 +4,7 @@ import 'package:skillpay/theme/app_theme.dart';
 import 'package:skillpay/services/messages_service.dart';
 import 'package:skillpay/models/chat_model.dart';
 import 'package:skillpay/screens/chat_screen.dart';
+import 'package:skillpay/widgets/chat_skeleton.dart';
 
 class MessagesScreen extends StatefulWidget {
   const MessagesScreen({super.key});
@@ -73,10 +74,12 @@ class _MessagesScreenState extends State<MessagesScreen> {
           Expanded(
             child: FutureBuilder<List<ChatModel>>(
               future: _chatsFuture,
+              initialData: _messagesService.getCachedChats(),
               builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+                if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
+                  return const ConversationListSkeleton();
                 }
+
 
                 if (snapshot.hasError) {
                   return Center(

@@ -4,6 +4,10 @@ import 'package:flutter/foundation.dart';
 
 class MessagesService {
   final SupabaseClient _client = Supabase.instance.client;
+  static List<ChatModel>? _cachedChats;
+
+  /// Return cached chats if available for instantaneous loading
+  List<ChatModel>? getCachedChats() => _cachedChats;
 
   /// Fetch active chat threads for the logged-in customer
   Future<List<ChatModel>> fetchChats() async {
@@ -22,11 +26,14 @@ class MessagesService {
           .order('updated_at', ascending: false);
 
       final List<dynamic> data = response;
-      return data.map((json) => ChatModel.fromMap(json)).toList();
+      final chats = data.map((json) => ChatModel.fromMap(json)).toList();
+      _cachedChats = chats;
+      return chats;
     } catch (e) {
       debugPrint('Error fetching chats from DB: $e');
       // Graceful fallback during prototyping
-      return [];
+      return _cachedChats ?? [];
     }
   }
 }
+

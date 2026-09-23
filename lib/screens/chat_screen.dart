@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:skillpay/theme/app_theme.dart';
+import 'package:skillpay/widgets/chat_skeleton.dart';
 
 class ChatScreen extends StatefulWidget {
   final String artisanName;
@@ -14,6 +15,7 @@ class ChatScreen extends StatefulWidget {
 class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  final bool _isLoading = false;
 
   // Mock thread data
   final List<Map<String, dynamic>> _messages = [
@@ -98,28 +100,31 @@ class _ChatScreenState extends State<ChatScreen> {
       body: Column(
         children: [
           Expanded(
-            child: ListView.builder(
-              controller: _scrollController,
-              padding: const EdgeInsets.all(24),
-              itemCount: _messages.length,
-              itemBuilder: (context, index) {
-                final message = _messages[index];
-                
-                if (message['isHeader'] == true) {
-                  return _buildDateHeader(message['dateHeader']);
-                }
-                
-                return _buildMessageBubble(
-                  text: message['text'],
-                  time: message['time'],
-                  isMe: message['isMe'],
-                );
-              },
-            ),
+            child: _isLoading
+                ? const ChatMessagesSkeleton()
+                : ListView.builder(
+                    controller: _scrollController,
+                    padding: const EdgeInsets.all(24),
+                    itemCount: _messages.length,
+                    itemBuilder: (context, index) {
+                      final message = _messages[index];
+                      
+                      if (message['isHeader'] == true) {
+                        return _buildDateHeader(message['dateHeader']);
+                      }
+                      
+                      return _buildMessageBubble(
+                        text: message['text'],
+                        time: message['time'],
+                        isMe: message['isMe'],
+                      );
+                    },
+                  ),
           ),
           _buildInputArea(),
         ],
       ),
+
     );
   }
 
