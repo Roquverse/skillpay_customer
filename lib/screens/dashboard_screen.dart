@@ -106,7 +106,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        FutureBuilder<Map<String, dynamic>?>(
+                         FutureBuilder<Map<String, dynamic>?>(
                           future: _userProfileFuture,
                           initialData: () {
                             final u = Supabase.instance.client.auth.currentUser;
@@ -114,27 +114,42 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               'id': u?.id ?? '',
                               'full_name': u?.userMetadata?['full_name'] ?? 'User',
                               'email': u?.email,
+                              'profile_image_url': u?.userMetadata?['profile_image_url'] ??
+                                  u?.userMetadata?['avatar_url'],
                             };
                           }(),
                           builder: (context, snapshot) {
                             String firstName = 'User';
+                            String? imageUrl;
                             if (snapshot.hasData && snapshot.data != null) {
                               final fullName = snapshot.data!['full_name'] as String?;
                               if (fullName != null && fullName.isNotEmpty) {
                                 firstName = fullName.split(' ').first;
                               }
+                              imageUrl = snapshot.data!['profile_image_url'] as String?;
                             }
+
+                            final bool hasImage = imageUrl != null && imageUrl.isNotEmpty;
 
                             return Row(
                               children: [
                                 Container(
                                   width: 44,
                                   height: 44,
-                                  decoration: const BoxDecoration(
-                                    color: Color(0xFFE0E0E0),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFE0E0E0),
                                     shape: BoxShape.circle,
+                                    image: hasImage
+                                        ? DecorationImage(
+                                            image: NetworkImage(imageUrl),
+                                            fit: BoxFit.cover,
+                                            onError: (_, __) {},
+                                          )
+                                        : null,
                                   ),
-                                  child: const Icon(Icons.person, color: Colors.white),
+                                  child: hasImage
+                                      ? null
+                                      : const Icon(Icons.person, color: Colors.white),
                                 ),
                                 const SizedBox(width: 12),
                                 Column(
@@ -163,6 +178,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ),
 
                         // Notification bell
+
                         InkWell(
                           onTap: () {
                             Navigator.push(

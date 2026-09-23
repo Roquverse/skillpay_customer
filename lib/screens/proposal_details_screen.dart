@@ -165,11 +165,29 @@ class ProposalDetailsScreen extends StatelessWidget {
                     height: 56,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      image: DecorationImage(
-                        image: AssetImage(artisanData['imagePath'] ?? 'assets/images/avatar_james.png'),
-                        fit: BoxFit.cover,
-                      ),
+                      color: const Color(0xFFE0E0E0),
+                      image: (() {
+                        final path = artisanData['imagePath'] as String?;
+                        if (path != null && path.startsWith('http')) {
+                          return DecorationImage(
+                            image: NetworkImage(path),
+                            fit: BoxFit.cover,
+                          );
+                        } else if (path != null && path.isNotEmpty) {
+                          return DecorationImage(
+                            image: AssetImage(path),
+                            fit: BoxFit.cover,
+                          );
+                        }
+                        return null;
+                      })(),
                     ),
+                    child: (() {
+                      final path = artisanData['imagePath'] as String?;
+                      return (path == null || path.isEmpty)
+                          ? const Icon(Icons.person, color: Colors.white, size: 30)
+                          : null;
+                    })(),
                   ),
                   Container(
                     width: 14,
