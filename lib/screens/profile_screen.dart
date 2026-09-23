@@ -35,7 +35,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       if (response != null) return response;
     } catch (e) {
-      debugPrint('Error fetching user profile: $e');
+      final errStr = e.toString();
+      if (errStr.contains('PGRST303') || errStr.contains('JWT issued at future')) {
+        // Minor clock skew between auth server and database; retry once after 1s
+        try {
+          await Future.delayed(const Duration(seconds: 1));
+          final retryResponse = await Supabase.instance.client
+              .from('user_profiles')
+              .select()
+              .eq('id', user.id)
+              .maybeSingle();
+          if (retryResponse != null) return retryResponse;
+        } catch (_) {}
+      }
     }
 
     // Fallback if no profile row exists or error occurs

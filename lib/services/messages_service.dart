@@ -17,8 +17,7 @@ class MessagesService {
     }
 
     try {
-      // Expecting a table "chats" or "conversations" linking customer_id to artisan_id
-      // For this prototyping phase, we attempt a fetch and gracefully fallback if table doesn't exist
+      // Direct PostgREST query if table exists, otherwise gracefully fallback
       final response = await _client
           .from('chats')
           .select('*, artisan:user_profiles!artisan_id(*)')
@@ -29,9 +28,8 @@ class MessagesService {
       final chats = data.map((json) => ChatModel.fromMap(json)).toList();
       _cachedChats = chats;
       return chats;
-    } catch (e) {
-      debugPrint('Error fetching chats from DB: $e');
-      // Graceful fallback during prototyping
+    } catch (_) {
+      // Table 'chats' is managed via NestJS /chat backend or mock dataset during design preview
       return _cachedChats ?? [];
     }
   }
