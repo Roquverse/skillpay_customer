@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 import 'package:skillpay/theme/app_theme.dart';
 import 'package:skillpay/widgets/onboarding_slide_widget.dart';
+import 'package:skillpay/widgets/policy_viewer_modal.dart';
 import 'package:skillpay/screens/create_account_screen.dart';
 import 'package:skillpay/screens/login_screen.dart';
 
@@ -15,6 +16,7 @@ class OnboardingScreen extends StatefulWidget {
 
 class _OnboardingScreenState extends State<OnboardingScreen> {
   final PageController _pageController = PageController();
+  bool _agreedToTerms = false;
 
   final List<OnboardingSlide> _slides = const [
     OnboardingSlide(
@@ -89,7 +91,110 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               ),
             ),
 
-            const SizedBox(height: 28),
+            const SizedBox(height: 20),
+
+            // Terms & Disclaimers Agreement Checkbox
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: Checkbox(
+                      value: _agreedToTerms,
+                      activeColor: AppColors.primary,
+                      checkColor: AppColors.textDark,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      side: const BorderSide(color: Color(0xFFCCCCCC), width: 1.5),
+                      onChanged: (val) {
+                        setState(() {
+                          _agreedToTerms = val ?? false;
+                        });
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Wrap(
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        Text(
+                          'I confirm that I have read and accept the ',
+                          style: GoogleFonts.outfit(
+                            fontSize: 12.5,
+                            color: AppColors.textMedium,
+                            height: 1.4,
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () => PolicyViewerModal.show(context, initialType: PolicyType.terms),
+                          child: Text(
+                            'Terms of Use',
+                            style: GoogleFonts.outfit(
+                              fontSize: 12.5,
+                              color: AppColors.textDark,
+                              fontWeight: FontWeight.w700,
+                              decoration: TextDecoration.underline,
+                            ),
+                          ),
+                        ),
+                        Text(
+                          ', ',
+                          style: GoogleFonts.outfit(
+                            fontSize: 12.5,
+                            color: AppColors.textMedium,
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () => PolicyViewerModal.show(context, initialType: PolicyType.privacy),
+                          child: Text(
+                            'Privacy Policy',
+                            style: GoogleFonts.outfit(
+                              fontSize: 12.5,
+                              color: AppColors.textDark,
+                              fontWeight: FontWeight.w700,
+                              decoration: TextDecoration.underline,
+                            ),
+                          ),
+                        ),
+                        Text(
+                          ', & ',
+                          style: GoogleFonts.outfit(
+                            fontSize: 12.5,
+                            color: AppColors.textMedium,
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () => PolicyViewerModal.show(context, initialType: PolicyType.disclaimers),
+                          child: Text(
+                            'Disclaimers',
+                            style: GoogleFonts.outfit(
+                              fontSize: 12.5,
+                              color: AppColors.textDark,
+                              fontWeight: FontWeight.w700,
+                              decoration: TextDecoration.underline,
+                            ),
+                          ),
+                        ),
+                        Text(
+                          '.',
+                          style: GoogleFonts.outfit(
+                            fontSize: 12.5,
+                            color: AppColors.textMedium,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 16),
 
             // Bottom buttons
             Padding(
@@ -99,6 +204,24 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   // Create account button
                   ElevatedButton(
                     onPressed: () {
+                      if (!_agreedToTerms) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              'Please accept the terms of use and policies to continue.',
+                              style: GoogleFonts.outfit(fontWeight: FontWeight.w500),
+                            ),
+                            backgroundColor: const Color(0xFFD32F2F),
+                            behavior: SnackBarBehavior.floating,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            duration: const Duration(seconds: 3),
+                          ),
+                        );
+                        return;
+                      }
+
                       Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -127,7 +250,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               ),
             ),
 
-            const SizedBox(height: 32),
+            const SizedBox(height: 24),
+
           ],
         ),
       ),
