@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:skillpay/theme/app_theme.dart';
+import 'package:skillpay/widgets/policy_viewer_modal.dart';
 
 /// Shared back button used across all auth screens.
 Widget buildAuthBackButton(BuildContext context) {
@@ -117,39 +118,74 @@ Widget buildAuthTextField({
   );
 }
 
-/// Bottom Terms & Privacy footer shared across auth screens.
-Widget buildAuthFooter() {
-  return Padding(
-    padding: const EdgeInsets.only(bottom: 20, left: 24, right: 24),
-    child: RichText(
-      textAlign: TextAlign.center,
-      text: TextSpan(
-        style: GoogleFonts.outfit(
-            fontSize: 11, color: AppColors.textLight, height: 1.5),
+/// Bottom Terms & Privacy footer shared across auth screens with clickable popups.
+Widget buildAuthFooter([BuildContext? context]) {
+  Widget content(BuildContext ctx) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 20, left: 24, right: 24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          const TextSpan(text: 'By logging in, you agree to SkillPay\n'),
-          TextSpan(
-            text: 'Terms of Service',
+          Text(
+            'By logging in, you agree to SkillPay',
             style: GoogleFonts.outfit(
-                fontSize: 11,
-                color: AppColors.textDark,
-                fontWeight: FontWeight.w600,
-                decoration: TextDecoration.underline),
+              fontSize: 11,
+              color: AppColors.textLight,
+            ),
+            textAlign: TextAlign.center,
           ),
-          const TextSpan(text: '  —  '),
-          TextSpan(
-            text: 'Privacy Policy',
-            style: GoogleFonts.outfit(
-                fontSize: 11,
-                color: AppColors.textDark,
-                fontWeight: FontWeight.w600,
-                decoration: TextDecoration.underline),
+          const SizedBox(height: 3),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              GestureDetector(
+                onTap: () => PolicyViewerModal.show(ctx, initialType: PolicyType.terms),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
+                  child: Text(
+                    'Terms of Service',
+                    style: GoogleFonts.outfit(
+                      fontSize: 11,
+                      color: AppColors.textDark,
+                      fontWeight: FontWeight.w600,
+                      decoration: TextDecoration.underline,
+                    ),
+                  ),
+                ),
+              ),
+              Text(
+                '  —  ',
+                style: GoogleFonts.outfit(
+                  fontSize: 11,
+                  color: AppColors.textLight,
+                ),
+              ),
+              GestureDetector(
+                onTap: () => PolicyViewerModal.show(ctx, initialType: PolicyType.privacy),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
+                  child: Text(
+                    'Privacy Policy',
+                    style: GoogleFonts.outfit(
+                      fontSize: 11,
+                      color: AppColors.textDark,
+                      fontWeight: FontWeight.w600,
+                      decoration: TextDecoration.underline,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
-    ),
-  );
+    );
+  }
+
+  if (context != null) return content(context);
+  return Builder(builder: content);
 }
+
 
 /// Red error banner shown at the bottom of auth screens.
 Widget buildAuthErrorBanner(String message) {

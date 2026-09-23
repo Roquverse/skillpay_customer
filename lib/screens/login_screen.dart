@@ -5,6 +5,7 @@ import 'package:skillpay/screens/create_account_screen.dart';
 import 'package:skillpay/screens/forgot_password_screen.dart';
 import 'package:skillpay/services/auth_service.dart';
 import 'package:skillpay/screens/main_navigation_screen.dart';
+import 'package:skillpay/widgets/auth_widgets.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -323,42 +324,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
 
-            // T&C footer
-            Padding(
-              padding: const EdgeInsets.only(bottom: 20, left: 24, right: 24),
-              child: RichText(
-                textAlign: TextAlign.center,
-                text: TextSpan(
-                  style: GoogleFonts.outfit(
-                    fontSize: 11,
-                    color: AppColors.textLight,
-                    height: 1.5,
-                  ),
-                  children: [
-                    const TextSpan(text: 'By logging in, you agree to SkillPay\n'),
-                    TextSpan(
-                      text: 'Terms of Service',
-                      style: GoogleFonts.outfit(
-                        fontSize: 11,
-                        color: AppColors.textDark,
-                        fontWeight: FontWeight.w600,
-                        decoration: TextDecoration.underline,
-                      ),
-                    ),
-                    const TextSpan(text: '  —  '),
-                    TextSpan(
-                      text: 'Privacy Policy',
-                      style: GoogleFonts.outfit(
-                        fontSize: 11,
-                        color: AppColors.textDark,
-                        fontWeight: FontWeight.w600,
-                        decoration: TextDecoration.underline,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+            // T&C footer with clickable popups
+            buildAuthFooter(context),
+
           ],
         ),
       ),
