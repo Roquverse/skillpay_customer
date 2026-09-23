@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:skillpay/theme/app_theme.dart';
 import 'package:skillpay/screens/edit_profile_screen.dart';
 import 'package:skillpay/screens/onboarding_screen.dart';
@@ -16,6 +15,8 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   late Future<Map<String, dynamic>?> _userProfileFuture;
 
+  final AuthService _authService = AuthService();
+
   @override
   void initState() {
     super.initState();
@@ -23,40 +24,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<Map<String, dynamic>?> _fetchUserProfile() async {
-    final user = Supabase.instance.client.auth.currentUser;
-    if (user == null) return null;
-
-    try {
-      final response = await Supabase.instance.client
-          .from('user_profiles')
-          .select()
-          .eq('id', user.id)
-          .maybeSingle();
-
-      if (response != null) return response;
-    } catch (e) {
-      final errStr = e.toString();
-      if (errStr.contains('PGRST303') || errStr.contains('JWT issued at future')) {
-        // Minor clock skew between auth server and database; retry once after 1s
-        try {
-          await Future.delayed(const Duration(seconds: 1));
-          final retryResponse = await Supabase.instance.client
-              .from('user_profiles')
-              .select()
-              .eq('id', user.id)
-              .maybeSingle();
-          if (retryResponse != null) return retryResponse;
-        } catch (_) {}
-      }
-    }
-
-    // Fallback if no profile row exists or error occurs
-    return {
-      'id': user.id,
-      'full_name': user.userMetadata?['full_name'] ?? 'User',
-      'email': user.email,
-      'phone_number': user.userMetadata?['phone'] ?? '',
-    };
+    return _authService.fetchUserProfile();
   }
 
   @override

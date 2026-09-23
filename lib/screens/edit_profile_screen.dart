@@ -41,25 +41,26 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _phoneController.text = user.userMetadata?['phone'] ?? '';
     _emailController.text = user.email ?? '';
 
-    // Optionally fetch from DB to override metadata if DB is strictly the source of truth
     try {
-      final response = await Supabase.instance.client
-          .from('user_profiles')
-          .select()
-          .eq('id', user.id)
-          .maybeSingle();
-
-      if (response != null && mounted) {
+      final profile = await _authService.fetchUserProfile();
+      if (mounted) {
         setState(() {
-          _fullNameController.text = response['full_name'] ?? _fullNameController.text;
-          _phoneController.text = response['phone_number'] ?? _phoneController.text;
-          _currentImageUrl = response['profile_image_url'];
-          // DO NOT overide email if users can't change it via this form easily
+          if (profile['full_name'] != null &&
+              profile['full_name'].toString().isNotEmpty &&
+              profile['full_name'] != 'User') {
+            _fullNameController.text = profile['full_name'];
+          }
+          if (profile['phone_number'] != null &&
+              profile['phone_number'].toString().isNotEmpty) {
+            _phoneController.text = profile['phone_number'];
+          }
+          _currentImageUrl = profile['profile_image_url'];
+          if (profile['date_of_birth'] != null) {
+            _dobController.text = profile['date_of_birth'].toString();
+          }
         });
       }
-    } catch (e) {
-      debugPrint('No DB profile found to preload: $e');
-    }
+    } catch (_) {}
   }
 
   @override

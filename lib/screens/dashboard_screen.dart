@@ -11,6 +11,7 @@ import 'package:skillpay/models/artisan_model.dart';
 import 'package:skillpay/screens/notifications_screen.dart';
 import 'package:skillpay/screens/artisans_screen.dart';
 import 'package:skillpay/screens/hire_artisan_screen.dart';
+import 'package:skillpay/services/auth_service.dart';
 import 'package:skillpay/screens/history_screen.dart';
 import 'package:skillpay/screens/history_job_details_screen.dart';
 
@@ -32,6 +33,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   final JobsService _jobsService = JobsService();
   final CategoriesService _categoriesService = CategoriesService();
   final ArtisansService _artisansService = ArtisansService();
+  final AuthService _authService = AuthService();
 
   late Future<List<JobModel>> _jobsFuture;
   late Future<Map<String, dynamic>?> _userProfileFuture;
@@ -54,38 +56,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Future<Map<String, dynamic>?> _fetchUserProfile() async {
-    final user = Supabase.instance.client.auth.currentUser;
-    if (user == null) return null;
-
-    try {
-      final response = await Supabase.instance.client
-          .from('user_profiles')
-          .select()
-          .eq('id', user.id)
-          .maybeSingle();
-
-      if (response != null) return response;
-    } catch (e) {
-      final errStr = e.toString();
-      if (errStr.contains('PGRST303') || errStr.contains('JWT issued at future')) {
-        try {
-          await Future.delayed(const Duration(seconds: 1));
-          final retryResponse = await Supabase.instance.client
-              .from('user_profiles')
-              .select()
-              .eq('id', user.id)
-              .maybeSingle();
-          if (retryResponse != null) return retryResponse;
-        } catch (_) {}
-      }
-    }
-
-    return {
-      'id': user.id,
-      'full_name': user.userMetadata?['full_name'] ?? 'User',
-      'email': user.email,
-      'phone_number': user.userMetadata?['phone'] ?? '',
-    };
+    return _authService.fetchUserProfile();
   }
 
   void _navigateToHire(ArtisanModel artisan) {

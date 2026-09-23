@@ -1,10 +1,11 @@
 import 'dart:io';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:http/http.dart' as http;
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'api_client.dart';
 
 class AuthService {
   final SupabaseClient _supabase = Supabase.instance.client;
+  final ApiClient _api = ApiClient.instance;
 
   /// 1. Sign up the user with email/password.
   /// Generates the 6-digit OTP sent to their email.
@@ -43,8 +44,7 @@ class AuthService {
     }
   }
 
-  /// 3. Call the custom RPC to create or update the public.user_profiles record.
-  /// Bypasses RLS to insert their location and final details.
+  /// 3. Initial profile setup via backend API
   Future<void> finishProfileSetup({
     required String email,
     required String fullName,
@@ -58,24 +58,75 @@ class AuthService {
         throw Exception('User is not authenticated.');
       }
 
-      await _supabase.rpc(
-        'create_or_update_user_profile',
-        params: {
-          'p_user_id': user.id,
-          'p_email': email,
-          'p_full_name': fullName,
-          'p_phone_number': phone,
-          'p_home_address': address,
-          'p_profile_image_url': null,
-          'p_user_type': userType.toLowerCase(), // e.g. 'customer'
-        },
+      await _supabase.auth.updateUser(
+        UserAttributes(
+          data: {
+            'full_name': fullName,
+            'phone': phone,
+            'address': address,
+          },
+        ),
       );
+
+      try {
+        await _api.post(
+          '/homeowners/profile/setup',
+          body: {
+            'fullName': fullName,
+            'phone': phone,
+            'defaultAddress': address,
+          },
+        );
+      } catch (e) {
+        debugPrint('[AuthService] Backend profile setup notice: $e');
+      }
     } catch (e) {
       throw Exception(_formatError(e));
     }
   }
 
-  /// 4. Upload a profile image to Supabase Storage and update the profile URL.
+  /// 4. Fetch the homeowner user profile
+  Future<Map<String, dynamic>> fetchUserProfile() async {
+    final user = _supabase.auth.currentUser;
+    if (user == null) {
+      return {'full_name': 'User', 'email': '', 'phone_number': ''};
+    }
+
+    try {
+      final data = await _api.get('/homeowners/profile');
+      if (data is Map<String, dynamic>) {
+        return {
+          'id': data['userId'] ?? data['id'] ?? user.id,
+          'full_name': data['fullName'] ??
+              user.userMetadata?['full_name'] ??
+              'User',
+          'email': data['user']?['email'] ?? user.email ?? '',
+          'phone_number': data['user']?['phone'] ??
+              data['phone'] ??
+              user.userMetadata?['phone'] ??
+              '',
+          'profile_image_url': data['profilePhoto'] ??
+              user.userMetadata?['avatar_url'] ??
+              user.userMetadata?['profile_image_url'],
+          'address': data['defaultAddress'],
+          'date_of_birth': data['dateOfBirth'],
+        };
+      }
+    } catch (e) {
+      debugPrint('[AuthService] Backend profile fetch notice: $e');
+    }
+
+    return {
+      'id': user.id,
+      'full_name': user.userMetadata?['full_name'] ?? 'User',
+      'email': user.email ?? '',
+      'phone_number': user.userMetadata?['phone'] ?? '',
+      'profile_image_url': user.userMetadata?['avatar_url'] ??
+          user.userMetadata?['profile_image_url'],
+    };
+  }
+
+  /// 5. Upload a profile image to Supabase Storage and update the profile URL.
   Future<String> uploadProfileImage(File imageFile) async {
     try {
       final user = _supabase.auth.currentUser;
@@ -84,28 +135,31 @@ class AuthService {
       }
 
       final fileExt = imageFile.path.split('.').last;
-      final fileName = '${user.id}_${DateTime.now().millisecondsSinceEpoch}.$fileExt';
-      final filePath = fileName; // Upload directly to root of bucket
+      final fileName =
+          '${user.id}_${DateTime.now().millisecondsSinceEpoch}.$fileExt';
+      final filePath = fileName;
 
-      // Assuming a bucket named 'avatars' exists and is publicly readable
       await _supabase.storage.from('avatars').upload(
-        filePath,
-        imageFile,
-        fileOptions: const FileOptions(cacheControl: '3600', upsert: true),
-      );
+            filePath,
+            imageFile,
+            fileOptions: const FileOptions(cacheControl: '3600', upsert: true),
+          );
 
-      final imageUrl = _supabase.storage.from('avatars').getPublicUrl(filePath);
+      final imageUrl =
+          _supabase.storage.from('avatars').getPublicUrl(filePath);
 
-      // Update auth metadata
       await _supabase.auth.updateUser(
         UserAttributes(data: {'profile_image_url': imageUrl}),
       );
 
-      // Update user_profiles table
-      await _supabase.from('user_profiles').update({
-        'profile_image_url': imageUrl,
-        'updated_at': DateTime.now().toIso8601String(),
-      }).eq('id', user.id);
+      try {
+        await _api.patch(
+          '/homeowners/profile',
+          body: {'profilePhoto': imageUrl},
+        );
+      } catch (e) {
+        debugPrint('[AuthService] Backend photo patch notice: $e');
+      }
 
       return imageUrl;
     } catch (e) {
@@ -113,11 +167,11 @@ class AuthService {
     }
   }
 
-  /// 4. Update the user profile details
+  /// 6. Update the user profile details
   Future<void> updateUserProfile({
     required String fullName,
     required String phone,
-    required String dateOfBirth, // Optional for future use
+    required String dateOfBirth,
   }) async {
     try {
       final user = _supabase.auth.currentUser;
@@ -125,7 +179,6 @@ class AuthService {
         throw Exception('User is not authenticated.');
       }
 
-      // 1. Update auth.users metadata first (for quick fallback access)
       await _supabase.auth.updateUser(
         UserAttributes(
           data: {
@@ -136,54 +189,48 @@ class AuthService {
         ),
       );
 
-      // 2. Try to update the public.user_profiles table.
-      final existingProfile = await _supabase
-          .from('user_profiles')
-          .select('id')
-          .eq('id', user.id)
-          .maybeSingle();
-
-      if (existingProfile != null) {
-        // Just update existing fields without touching others like home_address or user_type
-        await _supabase.from('user_profiles').update({
-          'full_name': fullName,
-          'phone_number': phone,
-          'updated_at': DateTime.now().toIso8601String(),
-        }).eq('id', user.id);
-      } else {
-        // Insert the missing row with the required user_type column
-        final defaultRole = user.userMetadata?['role']?.toString().toLowerCase() ?? 'customer';
-        await _supabase.from('user_profiles').insert({
-          'id': user.id,
-          'full_name': fullName,
-          'phone_number': phone,
-          'email': user.email,
-          'user_type': defaultRole,
-          'updated_at': DateTime.now().toIso8601String(),
-        });
+      try {
+        await _api.patch(
+          '/homeowners/profile',
+          body: {
+            'fullName': fullName,
+            'phone': phone,
+            if (dateOfBirth.isNotEmpty) 'dateOfBirth': dateOfBirth,
+          },
+        );
+      } catch (e) {
+        debugPrint('[AuthService] Backend profile patch notice: $e');
       }
-      
     } catch (e) {
       throw Exception(_formatError(e));
     }
   }
 
-  /// 5. Sign in an existing user
+  /// 7. Sign in with email and password
   Future<void> signIn({
     required String email,
     required String password,
   }) async {
     try {
-      await _supabase.auth.signInWithPassword(
+      final response = await _supabase.auth.signInWithPassword(
         email: email,
         password: password,
       );
+
+      final isDeactivated =
+          response.user?.userMetadata?['is_deactivated'] == true;
+      if (isDeactivated) {
+        await _supabase.auth.signOut();
+        throw const AuthException(
+          'Your account has been deactivated. Please contact support to reactivate your account.',
+        );
+      }
     } catch (e) {
       throw Exception(_formatError(e));
     }
   }
 
-  /// 5. Sign out the current user
+  /// 8. Sign out
   Future<void> signOut() async {
     try {
       await _supabase.auth.signOut();
@@ -192,37 +239,25 @@ class AuthService {
     }
   }
 
-  /// Deactivate account (sets account to INACTIVE on backend & Supabase, then signs out)
+  /// 9. Send password reset email
+  Future<void> resetPassword(String email) async {
+    try {
+      await _supabase.auth.resetPasswordForEmail(email);
+    } catch (e) {
+      throw Exception(_formatError(e));
+    }
+  }
+
+  /// 10. Deactivate account
   Future<void> deactivateAccount() async {
     try {
       final user = _supabase.auth.currentUser;
-      if (user == null) {
-        throw Exception('User is not authenticated.');
-      }
+      if (user == null) return;
 
-      final session = _supabase.auth.currentSession;
-      final token = session?.accessToken;
+      try {
+        await _api.post('/auth/deactivate');
+      } catch (_) {}
 
-      // 1. Call backend deactivation endpoint if token is present
-      final apiUrl = dotenv.env['API_URL'];
-      if (apiUrl != null && apiUrl.isNotEmpty && token != null) {
-        try {
-          final cleanUrl =
-              apiUrl.endsWith('/') ? apiUrl.substring(0, apiUrl.length - 1) : apiUrl;
-          await http.post(
-            Uri.parse('$cleanUrl/auth/deactivate'),
-            headers: {
-              'Content-Type': 'application/json',
-              'Accept': 'application/json',
-              'Authorization': 'Bearer $token',
-            },
-          );
-        } catch (_) {
-          // Proceed to sign out even if network fails
-        }
-      }
-
-      // 2. Mark metadata in Supabase
       try {
         await _supabase.auth.updateUser(
           UserAttributes(
@@ -234,15 +269,6 @@ class AuthService {
         );
       } catch (_) {}
 
-      // 3. Update public.user_profiles if present
-      try {
-        await _supabase.from('user_profiles').update({
-          'is_active': false,
-          'updated_at': DateTime.now().toIso8601String(),
-        }).eq('id', user.id);
-      } catch (_) {}
-
-      // 4. Sign out
       await _supabase.auth.signOut();
     } catch (e) {
       throw Exception(_formatError(e));
