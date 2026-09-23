@@ -83,6 +83,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     children: [
                       FutureBuilder<Map<String, dynamic>?>(
                         future: _userProfileFuture,
+                        initialData: () {
+                          final u = Supabase.instance.client.auth.currentUser;
+                          return {
+                            'id': u?.id ?? '',
+                            'full_name': u?.userMetadata?['full_name'] ?? 'User',
+                            'email': u?.email,
+                          };
+                        }(),
                         builder: (context, snapshot) {
                           String firstName = 'User';
                           if (snapshot.hasData && snapshot.data != null) {

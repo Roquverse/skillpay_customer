@@ -24,13 +24,22 @@ class _SplashScreenState extends State<SplashScreen>
     _checkAuthState();
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Precache key assets so onboarding/dashboard render instantly
+    precacheImage(const AssetImage('assets/images/logo.png'), context);
+    precacheImage(const AssetImage('assets/images/onboarding_workers.png'), context);
+    precacheImage(const AssetImage('assets/images/onboarding_payment.png'), context);
+  }
+
   void _setupAnimations() {
     _animationController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1500),
+      duration: const Duration(milliseconds: 500),
     );
 
-    _scaleAnimation = Tween<double>(begin: 0.5, end: 1.0).animate(
+    _scaleAnimation = Tween<double>(begin: 0.7, end: 1.0).animate(
       CurvedAnimation(
         parent: _animationController,
         curve: Curves.easeOutBack,
@@ -47,36 +56,29 @@ class _SplashScreenState extends State<SplashScreen>
     _animationController.forward();
   }
 
-  late final StreamSubscription<AuthState> _authStateSubscription;
-
   Future<void> _checkAuthState() async {
-    // Wait for the animation to gracefully complete
-    await Future.delayed(const Duration(milliseconds: 2500));
+    // 500ms for logo animation to complete smoothly
+    await Future.delayed(const Duration(milliseconds: 500));
 
     if (!mounted) return;
 
-    _authStateSubscription = Supabase.instance.client.auth.onAuthStateChange.listen((data) {
-      if (!mounted) return;
-      
-      final session = data.session;
-      
-      // Navigate based on session presence
-      if (session != null) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
-        );
-      } else {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const OnboardingScreen()),
-        );
-      }
-    });
+    // Check cached session immediately — zero network blocking
+    final session = Supabase.instance.client.auth.currentSession;
+
+    if (session != null) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
+      );
+    } else {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const OnboardingScreen()),
+      );
+    }
   }
 
   @override
   void dispose() {
     _animationController.dispose();
-    _authStateSubscription.cancel();
     super.dispose();
   }
 

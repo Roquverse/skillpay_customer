@@ -12,8 +12,7 @@ class AppColors {
 }
 
 class AppTheme {
-  static ThemeData get theme {
-    return ThemeData(
+  static final ThemeData theme = ThemeData(
       colorScheme: ColorScheme.fromSeed(
         seedColor: AppColors.primary,
         primary: AppColors.primary,
@@ -70,5 +69,4 @@ class AppTheme {
       ),
       useMaterial3: true,
     );
-  }
 }
