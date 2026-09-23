@@ -3,7 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:skillpay/theme/app_theme.dart';
 import 'package:skillpay/screens/dashboard_screen.dart';
 import 'package:skillpay/screens/jobs_screen.dart';
-import 'package:skillpay/screens/history_screen.dart';
+import 'package:skillpay/screens/artisans_screen.dart';
 import 'package:skillpay/screens/messages_screen.dart';
 import 'package:skillpay/screens/settings_screen.dart';
 
@@ -20,7 +20,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   final List<Widget> _screens = [
     const DashboardScreen(),
     const JobsScreen(),
-    const HistoryScreen(),
+    const ArtisansScreen(),
     const MessagesScreen(),
     const SettingsScreen(),
   ];
@@ -65,8 +65,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                   onTap: () => setState(() => _currentIndex = 1),
                 ),
                 _NavBarItem(
-                  icon: Icons.bar_chart_rounded,
-                  label: 'History',
+                  icon: Icons.engineering_outlined,
+                  label: 'Artisans',
                   isSelected: _currentIndex == 2,
                   onTap: () => setState(() => _currentIndex = 2),
                 ),

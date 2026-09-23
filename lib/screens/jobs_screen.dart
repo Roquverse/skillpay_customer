@@ -61,29 +61,41 @@ class _JobsScreenState extends State<JobsScreen> {
       ),
       body: Stack(
         children: [
-          FutureBuilder<List<JobModel>>(
-            future: _jobsFuture,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(
-                  child: CircularProgressIndicator(color: AppColors.primary),
-                );
-              }
+          RefreshIndicator(
+            color: AppColors.primary,
+            onRefresh: () async => _refreshJobs(),
+            child: FutureBuilder<List<JobModel>>(
+              future: _jobsFuture,
+              initialData: _jobsService.getCachedCustomerJobs(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
+                  return const Center(
+                    child: CircularProgressIndicator(color: AppColors.primary),
+                  );
+                }
 
-              if (snapshot.hasError) {
-                return Center(
-                  child: Text('Error loading jobs\n${snapshot.error}', textAlign: TextAlign.center),
-                );
-              }
+                if (snapshot.hasError && (!snapshot.hasData || (snapshot.data ?? []).isEmpty)) {
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: Text(
+                        'Unable to load jobs at this time.\nPull down to refresh.',
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.outfit(color: AppColors.textMedium),
+                      ),
+                    ),
+                  );
+                }
 
-              final jobs = snapshot.data ?? [];
+                final jobs = snapshot.data ?? [];
 
-              if (jobs.isEmpty) {
-                return _buildEmptyState();
-              }
+                if (jobs.isEmpty) {
+                  return _buildEmptyState();
+                }
 
-              return _buildListState(jobs);
-            },
+                return _buildListState(jobs);
+              },
+            ),
           ),
           
           // Sticky Bottom Button

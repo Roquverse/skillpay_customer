@@ -1,38 +1,65 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:skillpay/models/job_model.dart';
+import 'package:flutter/foundation.dart';
+import 'api_client.dart';
+import '../models/job_model.dart';
 
 class JobsService {
-  final SupabaseClient _client = Supabase.instance.client;
+  final _api = ApiClient.instance;
+  static List<JobModel>? _cachedCustomerJobs;
 
-  /// Fetch all jobs for the currently logged-in customer
+  List<JobModel>? getCachedCustomerJobs() => _cachedCustomerJobs;
+
+  /// Fetch all jobs for the currently logged-in customer/homeowner
   Future<List<JobModel>> fetchCustomerJobs() async {
-    final user = _client.auth.currentUser;
-    if (user == null) {
-      throw Exception('User is not logged in');
+    try {
+      final data = await _api.get('/jobs/my-jobs');
+      if (data is List) {
+        final jobs = data
+            .map((json) => JobModel.fromMap(json as Map<String, dynamic>))
+            .toList();
+        _cachedCustomerJobs = jobs;
+        return jobs;
+      }
+      return _cachedCustomerJobs ?? [];
+    } on ApiException catch (e) {
+      debugPrint('[JobsService] API error fetching customer jobs: ${e.message}');
+      return _cachedCustomerJobs ?? [];
+    } catch (e) {
+      debugPrint('[JobsService] Unexpected error: $e');
+      return _cachedCustomerJobs ?? [];
     }
-
-    // According to schema, the customer who created the job is under `customer_id`
-    final response = await _client
-        .from('jobs')
-        .select()
-        .eq('customer_id', user.id)
-        .order('created_at', ascending: false);
-
-    final List<dynamic> data = response;
-    return data.map((json) => JobModel.fromMap(json)).toList();
   }
 
-  /// Create a new job
-  Future<void> createJob(JobModel job) async {
-    final user = _client.auth.currentUser;
-    if (user == null) {
-      throw Exception('User is not logged in');
+  /// Create a new job via NestJS API
+  Future<JobModel?> createJob(JobModel job) async {
+    try {
+      final data = await _api.post('/jobs', body: job.toMap()) as Map<String, dynamic>;
+      final created = JobModel.fromMap(data);
+      // Invalidate cache
+      _cachedCustomerJobs = null;
+      return created;
+    } on ApiException catch (e) {
+      debugPrint('[JobsService] Error creating job: ${e.message}');
+      throw Exception(e.message);
     }
+  }
 
-    final postData = job.toMap();
-    // Enforce the current user is the customer
-    postData['customer_id'] = user.id;
+  /// Fetch a single job details by ID
+  Future<JobModel> fetchJob(String jobId) async {
+    try {
+      final data = await _api.get('/jobs/$jobId') as Map<String, dynamic>;
+      return JobModel.fromMap(data);
+    } on ApiException catch (e) {
+      throw Exception(e.message);
+    }
+  }
 
-    await _client.from('jobs').insert(postData);
+  /// Cancel a job
+  Future<void> cancelJob(String jobId) async {
+    try {
+      await _api.patch('/jobs/$jobId/cancel');
+      _cachedCustomerJobs = null;
+    } on ApiException catch (e) {
+      throw Exception(e.message);
+    }
   }
 }

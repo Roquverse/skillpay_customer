@@ -52,43 +52,61 @@ class _HistoryScreenState extends State<HistoryScreen> {
         children: [
           _buildSearchBar(),
           Expanded(
-            child: FutureBuilder<List<JobModel>>(
-              future: _jobsFuture,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator(color: AppColors.primary));
-                }
-
-                if (snapshot.hasError) {
-                  return Center(child: Text('Error loading history\n${snapshot.error}', textAlign: TextAlign.center));
-                }
-
-                final allJobs = snapshot.data ?? [];
-                
-                // Filter to only show past/completed jobs in History
-                final jobs = allJobs.where((job) {
-                  final status = job.status.toLowerCase();
-                  return ['completed', 'canceled', 'rejected', 'failed'].contains(status);
-                }).toList();
-
-                if (jobs.isEmpty) {
-                  return Center(
-                    child: Text(
-                      'No jobs history found.',
-                      style: GoogleFonts.outfit(color: AppColors.textMedium, fontSize: 16),
-                    ),
-                  );
-                }
-
-                return ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(24, 8, 24, 100), // padding for bottom nav
-                  itemCount: jobs.length,
-                  itemBuilder: (context, index) {
-                    final job = jobs[index];
-                    return _buildHistoryCard(job);
-                  },
-                );
+            child: RefreshIndicator(
+              color: AppColors.primary,
+              onRefresh: () async {
+                setState(() {
+                  _jobsFuture = _jobsService.fetchCustomerJobs();
+                });
               },
+              child: FutureBuilder<List<JobModel>>(
+                future: _jobsFuture,
+                initialData: _jobsService.getCachedCustomerJobs(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
+                    return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+                  }
+
+                  if (snapshot.hasError && (!snapshot.hasData || (snapshot.data ?? []).isEmpty)) {
+                    return Center(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 24),
+                        child: Text(
+                          'Unable to load history at this time.\nPull down to refresh.',
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.outfit(color: AppColors.textMedium),
+                        ),
+                      ),
+                    );
+                  }
+
+                  final allJobs = snapshot.data ?? [];
+                  
+                  // Filter to only show past/completed jobs in History
+                  final jobs = allJobs.where((job) {
+                    final status = job.status.toLowerCase();
+                    return ['completed', 'canceled', 'rejected', 'failed'].contains(status);
+                  }).toList();
+
+                  if (jobs.isEmpty) {
+                    return Center(
+                      child: Text(
+                        'No jobs history found.',
+                        style: GoogleFonts.outfit(color: AppColors.textMedium, fontSize: 16),
+                      ),
+                    );
+                  }
+
+                  return ListView.builder(
+                    padding: const EdgeInsets.fromLTRB(24, 8, 24, 100), // padding for bottom nav
+                    itemCount: jobs.length,
+                    itemBuilder: (context, index) {
+                      final job = jobs[index];
+                      return _buildHistoryCard(job);
+                    },
+                  );
+                },
+              ),
             ),
           ),
         ],
@@ -143,7 +161,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
   Widget _buildHistoryCard(JobModel job) {
     // Determine mapping based on mockup
     final String shortId = job.id.split('-').first.toUpperCase();
-    final String artisanName = job.artisanId != null ? 'Assigned' : 'Searching';
+    final String artisanName = job.artisanName != null && job.artisanName!.isNotEmpty
+        ? job.artisanName!
+        : (job.artisanId != null ? 'Assigned' : 'Searching');
     final String tradeName = job.category;
     final String status = job.status.capitalize();
     
